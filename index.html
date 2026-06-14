@@ -1733,7 +1733,7 @@ function render(){
     +'<div style="font-size:17px;font-weight:700;color:var(--cream);letter-spacing:.04em">'+_h+':'+_m+'</div>'
     +'<div style="font-size:10px;color:var(--mut);letter-spacing:.03em">'+_days[_n.getDay()]+', '+_n.getDate()+'. '+_months[_n.getMonth()]+'</div>'
     +'</div>';
-  var right=clockHtml+'<button class="hdr-b" id="sync-badge" onclick="sync3TasksToNotion()" title="Top 3 → Notion" style="margin-left:8px">⬆️</button>';
+  var right=clockHtml;
   var sheetHtml='';
   if(sheet==='detail')sheetHtml=rDetail();
   else if(sheet==='add'||sheet==='edit')sheetHtml=rAdd();
