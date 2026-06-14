@@ -578,10 +578,16 @@ function executeKumpelAction(raw){
           var ns=cur.length>0&&found.slots&&found.slots.length>0?'terminiert':cur.length>0?'zugewiesen':found.status;
           updT(found.id,{assignees:cur,status:ns});
           toast('✅ '+(person?person.l:realId)+' zugewiesen');
+          // Sofort nach Notion pushen
+          var updatedTask=tasks.find(function(t){return t.id===found.id;});
+          if(updatedTask)setTimeout(function(){pushTaskToNotion(updatedTask);},300);
         } else if(a.taskText){
           // Aufgabe existiert noch nicht → neu anlegen und direkt zuweisen
           addT({text:a.taskText,min:25,cat:detectCat(a.taskText,seg),biz:seg,status:'zugewiesen',assignees:[realId]});
           toast('✅ Aufgabe angelegt & '+(person?person.l:realId)+' zugewiesen');
+          // Sofort nach Notion pushen
+          var newTask=tasks[0]; // addT fügt am Anfang ein (unshift)
+          setTimeout(function(){pushTaskToNotion(newTask);},300);
         }
       } else if(a.type==='status'&&a.taskSearch&&a.status){
         var kw2=a.taskSearch.toLowerCase();
@@ -1524,6 +1530,27 @@ function notionQueryDB(dbId, cb){
 
 function notionCreatePage(dbId, props, cb){
   notionAPI('pages','POST',{parent:{database_id:dbId},properties:props},cb);
+}
+
+function pushTaskToNotion(task){
+  // Token und DB je nach Bereich wählen
+  var token=task.biz==='a'?getNotionToken():getRalfToken();
+  if(!token){return;} // kein Token → still überspringen
+  var dbId=task.biz==='a'?SSDBID:NDBID;
+  var assigneeNames=(task.assignees||[]).map(function(id){
+    var p=AS.find(function(x){return x.id===id;});
+    return p?p.l:id;
+  }).join(', ');
+  var props={
+    'Name':{title:[{text:{content:task.text}}]},
+    'Status':{select:{name:task.status||'offen'}},
+    'Zugewiesen':{rich_text:[{text:{content:assigneeNames}}]},
+    'Kategorie':{rich_text:[{text:{content:task.cat||''}}]}
+  };
+  notionAPI('pages','POST',{parent:{database_id:dbId},properties:props},function(d){
+    if(d&&d.id){toast('📋 In Notion: '+(assigneeNames||task.text));}
+    else if(d&&d.object==='error'){toast('⚠️ Notion: '+d.message);}
+  },token);
 }
 
 
