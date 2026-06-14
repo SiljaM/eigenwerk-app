@@ -555,15 +555,41 @@ function addKumpelNote(){
   saveKumpelNotes();kumpelAiReply='';inp.value='';render();
 }
 function delKumpelNote(id){kumpelNotes=kumpelNotes.filter(function(n){return n.id!==id;});saveKumpelNotes();render();}
+function executeKumpelAction(raw){
+  // Suche nach [ACTION:{...}] am Ende der Antwort
+  var match=raw.match(/\[ACTION:(\{[^}]+\})\]/);
+  var text=raw.replace(/\[ACTION:\{[^}]+\}\]/g,'').trim();
+  if(match){
+    try{
+      var a=JSON.parse(match[1]);
+      if(a.type==='assign'&&a.taskSearch&&a.assignee){
+        var kw=a.taskSearch.toLowerCase();
+        var found=tasks.find(function(t){return t.text.toLowerCase().indexOf(kw)>=0;});
+        if(found){
+          var cur=(found.assignees||[]).slice();
+          if(!cur.includes(a.assignee))cur.push(a.assignee);
+          var ns=cur.length>0&&found.slots&&found.slots.length>0?'terminiert':cur.length>0?'zugewiesen':found.status;
+          updT(found.id,{assignees:cur,status:ns});
+        }
+      } else if(a.type==='status'&&a.taskSearch&&a.status){
+        var kw2=a.taskSearch.toLowerCase();
+        var found2=tasks.find(function(t){return t.text.toLowerCase().indexOf(kw2)>=0;});
+        if(found2)updT(found2.id,{status:a.status});
+      }
+    }catch(e){}
+  }
+  return text;
+}
 function askClaude(prompt){
   kumpelAiReply='__loading__';render();
   fetch('/.netlify/functions/claude',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prompt:prompt,max_tokens:600})
+    body:JSON.stringify({prompt:prompt,max_tokens:700})
   }).then(function(r){return r.json();})
   .then(function(d){
-    kumpelAiReply=(d.content&&d.content[0]?d.content[0].text:(d.error?'⚠️ '+d.error:'Keine Antwort erhalten.'));
+    var raw=d.content&&d.content[0]?d.content[0].text:(d.error?'⚠️ '+d.error:'Keine Antwort erhalten.');
+    kumpelAiReply=executeKumpelAction(raw);
     kumpelInputText='';render();
   }).catch(function(){kumpelAiReply='⚠️ Verbindungsfehler.';render();});
 }
@@ -1160,7 +1186,14 @@ function sendKumpel(){
   var t=(kumpelInputText||'').trim()||(document.getElementById('kumpel-inp')||{}).value||'';
   t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
-  askClaude('Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein "Hier ist was ich sehe", kein "Ich habe analysiert", kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze oder Punkte. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen. Kein Vorwurf.\n\nRalfs Gedanken: '+t);
+  // Aktuelle Aufgaben + Team als Kontext aufbauen
+  var offeneAufgaben=tasks.filter(function(t){return t.status!=='erledigt';}).slice(0,20);
+  var aufgabenListe=offeneAufgaben.length>0
+    ?offeneAufgaben.map(function(task,i){return (i+1)+'. "'+task.text+'" (Status: '+task.status+(task.assignees&&task.assignees.length>0?', zugewiesen: '+task.assignees.join(','):'')+')';}).join('\n')
+    :'(keine offenen Aufgaben)';
+  var teamListe=AS.filter(function(a){return a.id!=='ralf';}).map(function(a){return a.id+' ('+a.name+')';}).join(', ');
+  var systemPrompt='Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","assignee":"<person-id>"}]\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+'\n\nRalfs Gedanken: '+t;
+  askClaude(systemPrompt);
 }
 function saveReplyAsNote(){
   if(!kumpelAiReply||kumpelAiReply==='__loading__')return;
