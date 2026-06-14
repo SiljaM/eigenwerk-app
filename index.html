@@ -1155,41 +1155,65 @@ function savDetail(){
 }
 
 // ── KI KUMPEL ─────────────────────────────────────────────────
+var kumpelShowNotes=false;
+function sendKumpel(){
+  var t=(kumpelInputText||'').trim()||(document.getElementById('kumpel-inp')||{}).value||'';
+  t=t.trim();
+  if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
+  askClaude('Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein "Hier ist was ich sehe", kein "Ich habe analysiert", kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze oder Punkte. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen. Kein Vorwurf.\n\nRalfs Gedanken: '+t);
+}
+function saveReplyAsNote(){
+  if(!kumpelAiReply||kumpelAiReply==='__loading__')return;
+  kumpelNotes.unshift({id:uid(),text:kumpelAiReply,ts:new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  saveKumpelNotes();
+  kumpelAiReply='';kumpelShowNotes=true;
+  toast('✅ In Notizen gespeichert');render();
+}
 function rKumpel(){
   var notes=kumpelNotes;
-  var html='<div class="kumpel-header">🧠 Gedankenchaos</div>'
-    +'<div class="kumpel-sub">Wirf alles raus was im Kopf ist — Ideen, Fragen, Sorgen. Claude hilft sortieren.</div>'
+  var html='<div class="kumpel-header">🧠 Kumpel</div>'
+    +'<div class="kumpel-sub">Schreib oder sprich — dein Kumpel antwortet.</div>'
     +'<div class="kumpel-input-wrap">'
-    +'<textarea id="kumpel-inp" class="kumpel-input" placeholder="'+(voiceActive?'🎙 Sprich jetzt — ich höre zu…':'Tippen oder Mikrofon antippen…')+'" oninput="kumpelInputText=this.value">'+kumpelInputText.replace(/</g,'&lt;')+'</textarea>'
+    +'<textarea id="kumpel-inp" class="kumpel-input" placeholder="'+(voiceActive?'🎙 Ich höre zu…':'Was geht dir gerade durch den Kopf?')+'" oninput="kumpelInputText=this.value" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendKumpel();}">'+kumpelInputText.replace(/</g,'&lt;')+'</textarea>'
     +'<div style="display:flex;flex-direction:column;gap:6px">'
     +'<button onclick="toggleVoice()" style="width:46px;height:46px;border-radius:50%;border:2px solid '+(voiceActive?'#EF4444':'var(--rust)')+';background:'+(voiceActive?'#EF4444':'var(--rust)')+';color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;'+(voiceActive?'animation:breath-pulse .8s infinite':'')+'">🎙</button>'
-    +'<button class="kumpel-send" onclick="addKumpelNote()" style="width:46px;height:46px;border-radius:50%;font-size:18px;display:flex;align-items:center;justify-content:center">💾</button>'
+    +'<button onclick="sendKumpel()" style="width:46px;height:46px;border-radius:50%;background:var(--rust);color:white;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center">➤</button>'
     +'</div>'
-    +'</div>'
-    +'<div class="kumpel-action-row">'
-    +'<button class="kumpel-action-btn" onclick="var t=(kumpelInputText||\'\').trim()||(document.getElementById(\'kumpel-inp\')||{}).value||\'\';t=t.trim();if(!t){toast(\'⚠️ Zuerst etwas eintippen\');return;}askClaude(\'Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\\n\\nSo redest du:\\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein "Hier ist was ich sehe", kein "Ich habe analysiert", kein Coaching-Sprech.\\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\\n- Max. 3 Sätze oder Punkte. Nicht mehr.\\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen. Kein Vorwurf.\\n\\nRalfs Gedanken: \'+t)">🤖 Sortieren lassen</button>'
-    +'<button class="kumpel-action-btn" onclick="quickSaveToApp()">➕ Als Aufgabe</button>'
-    +'<button class="kumpel-action-btn" onclick="quickSaveToNotion()">📋 Zu Notion</button>'
     +'</div>';
 
   if(kumpelAiReply==='__loading__'){
-    html+='<div class="kumpel-thinking"><div class="kumpel-dot"></div><div class="kumpel-dot"></div><div class="kumpel-dot"></div><span>Claude denkt…</span></div>';
+    html+='<div class="kumpel-thinking"><div class="kumpel-dot"></div><div class="kumpel-dot"></div><div class="kumpel-dot"></div><span>Kumpel denkt…</span></div>';
   } else if(kumpelAiReply){
-    html+='<div class="kumpel-ai-response"><div class="kumpel-ai-label">🤖 Claude sagt</div><div class="kumpel-ai-text">'+kumpelAiReply.replace(/\n/g,'<br>')+'</div></div>';
+    html+='<div class="kumpel-ai-response">'
+      +'<div class="kumpel-ai-text">'+kumpelAiReply.replace(/\n/g,'<br>')+'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button onclick="kumpelAiReply=\'\';kumpelInputText=\'\';render()" style="flex:1;padding:8px;border-radius:8px;background:#E5DDD4;color:#2A2218;border:none;font-size:12px;cursor:pointer">✕ Schließen</button>'
+      +'<button onclick="saveReplyAsNote()" style="flex:1;padding:8px;border-radius:8px;background:var(--rust);color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">📌 Speichern</button>'
+      +'</div>'
+      +'</div>';
   }
 
-  if(notes.length){
-    html+='<div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px">Deine Notizen</div>';
-    notes.forEach(function(n){
-      html+='<div class="kumpel-note">'
-        +'<div class="kumpel-note-text">'+n.text.replace(/</g,'&lt;')+'</div>'
-        +'<div class="kumpel-note-meta"><span>'+n.ts+'</span>'
-        +'<button class="kumpel-note-del" onclick="delKumpelNote(\''+n.id+'\')">🗑</button></div>'
-        +'</div>';
-    });
-  } else {
-    html+='<div class="empty" style="padding:24px 0"><div style="font-size:32px;margin-bottom:8px">🌿</div><div>Noch keine Notizen. Einfach losschreiben.</div></div>';
+  // Notizen-Bereich (ein-/ausklappbar)
+  html+='<div style="margin-top:16px">'
+    +'<button onclick="kumpelShowNotes=!kumpelShowNotes;render()" style="width:100%;padding:10px;border-radius:10px;background:#E5DDD4;color:#2A2218;border:none;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between">'
+    +'<span>📋 Meine Notizen'+(notes.length?' ('+notes.length+')':'')+'</span>'
+    +'<span>'+(kumpelShowNotes?'▲':'▼')+'</span>'
+    +'</button>';
+
+  if(kumpelShowNotes){
+    if(notes.length){
+      notes.forEach(function(n){
+        html+='<div class="kumpel-note" style="margin-top:8px">'
+          +'<div class="kumpel-note-text">'+n.text.replace(/</g,'&lt;')+'</div>'
+          +'<div class="kumpel-note-meta"><span>'+n.ts+'</span>'
+          +'<button class="kumpel-note-del" onclick="delKumpelNote(\''+n.id+'\')">🗑</button></div>'
+          +'</div>';
+      });
+    } else {
+      html+='<div style="text-align:center;padding:20px;color:var(--mut);font-size:13px">Noch keine Notizen gespeichert.</div>';
+    }
   }
+  html+='</div>';
   return html;
 }
 
