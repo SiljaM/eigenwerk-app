@@ -637,7 +637,7 @@ function apiHeaders(){return{'Content-Type':'application/json','x-api-key':getAp
 
 function syncToNotion(showToast){
   if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('⚠️ Bitte zuerst API-Key in Einstellungen eingeben');return Promise.reject('no key');}
+  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
   if(showToast)toast('⏳ Notion...');
   var data=tasks.filter(function(t){return t.biz==='s';}).slice(0,20).map(function(t){return {id:t.id,title:t.text,status:t.status,cat:t.cat,biz:t.biz==='s'?'Schlosserei':'Stahl & Seele',assignees:(t.assignees||[]).join(', ')};});
   return fetch('https://api.anthropic.com/v1/messages',{
@@ -650,7 +650,7 @@ function syncToNotion(showToast){
 
 function syncToStahlSeeleNotion(showToast){
   if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('⚠️ Bitte zuerst API-Key in Einstellungen eingeben');return Promise.reject('no key');}
+  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
   if(showToast)toast('⏳ Stahl & Seele → Notion...');
   var data=tasks.filter(function(t){return t.biz==='a';}).slice(0,30).map(function(t){return {id:t.id,title:t.text,status:t.status,cat:t.cat,assignees:(t.assignees||[]).join(', ')};});
   return fetch('https://api.anthropic.com/v1/messages',{
@@ -663,7 +663,7 @@ function syncToStahlSeeleNotion(showToast){
 
 function syncToSheets(showToast){
   if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('⚠️ Bitte zuerst API-Key in Einstellungen eingeben');return Promise.reject('no key');}
+  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
   if(showToast)toast('⏳ Sheets...');
   var rows=tasks.map(function(t){return [t.text,t.status||'Offen',t.cat,t.biz==='s'?'Schlosserei':'Stahl & Seele',(t.assignees||[]).join(', '),t.min+'min',(t.slots&&t.slots[0]?t.slots[0].ds:'')];});
   return fetch('https://api.anthropic.com/v1/messages',{
@@ -675,7 +675,7 @@ function syncToSheets(showToast){
 }
 
 function pullFromSheets(){
-  if(!getApiKey()){toast('⚠️ Bitte zuerst API-Key in Einstellungen eingeben');return Promise.reject('no key');}
+  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
   toast('⏳ Lade von Google Sheets...');
   return fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',headers:apiHeaders(),
@@ -1019,13 +1019,14 @@ function rSettings(){
     +'</div>'
     +'<div class="card"><div class="ct">🔑 API-Keys einrichten</div>'
     +'<div style="padding:14px 16px;border-bottom:1px solid var(--lit)">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:4px">🤖 Claude API-Key</div>'
-    +'<div style="font-size:11px;color:var(--mut);margin-bottom:10px">Für KI-Kumpel & Gedankensortierung. Holen bei: <span style="color:var(--rust)">console.anthropic.com</span></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:6px">🤖 KI-Kumpel</div>'
+    +'<div style="font-size:12px;color:var(--grn);margin-bottom:8px">✅ Aktiv – läuft über Server, kein Key nötig</div>'
+    +'<div style="font-size:11px;color:var(--mut);margin-bottom:10px">Für Notion-Sync zusätzlich den Key eintragen (bleibt nur auf diesem Gerät):</div>'
     +'<div style="display:flex;gap:8px;align-items:center">'
-    +'<input id="apikey-in" type="password" placeholder="sk-ant-..." value="'+getApiKey()+'" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg);color:var(--txt);font-size:13px;font-family:inherit">'
+    +'<input id="apikey-in" type="password" placeholder="sk-ant-... (optional, nur für Sync)" value="'+getApiKey()+'" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg);color:var(--txt);font-size:13px;font-family:inherit">'
     +'<button onclick="var v=document.getElementById(\'apikey-in\').value.trim();localStorage.setItem(\''+LK+':apikey\',v);toast(v?\'✅ Claude Key gespeichert\':\'🗑 Gelöscht\');render()" style="padding:10px 14px;border-radius:10px;background:var(--blue);color:white;border:none;font-size:13px;font-weight:700;cursor:pointer">Speichern</button>'
     +'</div>'
-    +'<div style="margin-top:6px;font-size:11px;color:'+(getApiKey()?'var(--grn)':'var(--red)')+';">'+(getApiKey()?'✅ Gespeichert – KI-Kumpel aktiv':'⚠️ Fehlt – KI-Kumpel inaktiv')+'</div>'
+    +'<div style="margin-top:6px;font-size:11px;color:'+(getApiKey()?'var(--grn)':'var(--mut)')+';">'+(getApiKey()?'✅ Notion-Sync aktiv':'ℹ️ Ohne Key: Notion-Sync deaktiviert')+'</div>'
     +'</div>'
     +'<div style="padding:14px 16px;border-bottom:1px solid var(--lit)">'
     +'<div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:4px">📋 Notion Token — Siljas Workspace</div>'
@@ -1430,7 +1431,7 @@ function loadSSBestand(){
 
 
 function pullFromStahlSeele(){
-  if(!getApiKey()){toast('⚠️ API-Key in Einstellungen eingeben');return;}
+  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return;}
   toast('⏳ Lade Stahl & Seele von Notion…');
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',headers:apiHeaders(),
