@@ -740,51 +740,19 @@ function syncToNotion(showToast){
 }
 
 function syncToStahlSeeleNotion(showToast){
-  if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
-  if(showToast)toast('⏳ Stahl & Seele → Notion...');
-  var data=tasks.filter(function(t){return t.biz==='a';}).slice(0,30).map(function(t){return {id:t.id,title:t.text,status:t.status,cat:t.cat,assignees:(t.assignees||[]).join(', ')};});
-  return fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,
-      messages:[{role:'user',content:'Sync Aufgaben in Notion DB '+SSDBID+' (Stahl & Seele): '+JSON.stringify(data)}],
-      mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]})
-  }).then(function(r){return r.json();}).then(function(){if(showToast)toast('✅ Stahl & Seele sync!');}).catch(function(e){if(showToast)toast('⚠️ Stahl & Seele Fehler');throw e;});
+  // Browser-direkte Anthropic-API nicht verfügbar → Zuweisung pusht automatisch via Netlify
+  if(showToast)toast('ℹ️ Sync läuft automatisch bei Zuweisung');
+  return Promise.resolve();
 }
 
 function syncToSheets(showToast){
-  if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
-  if(showToast)toast('⏳ Sheets...');
-  var rows=tasks.map(function(t){return [t.text,t.status||'Offen',t.cat,t.biz==='s'?'Schlosserei':'Stahl & Seele',(t.assignees||[]).join(', '),t.min+'min',(t.slots&&t.slots[0]?t.slots[0].ds:'')];});
-  return fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,
-      messages:[{role:'user',content:'Aktualisiere Google Sheets Datei "Eigenwerk Aufgaben" mit Spalten Aufgabe/Status/Kategorie/Bereich/Zugewiesen/Aufwand/Termin: '+JSON.stringify(rows.slice(0,30))}],
-      mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'google-drive'}]})
-  }).then(function(r){return r.json();}).then(function(){if(showToast)toast('✅ Sheets sync');}).catch(function(e){if(showToast)toast('⚠️ Sheets Fehler');throw e;});
+  // Google Sheets via Browser-API nicht verfügbar
+  return Promise.resolve();
 }
 
 function pullFromSheets(){
-  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
-  toast('⏳ Lade von Google Sheets...');
-  return fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
-      messages:[{role:'user',content:'Lese Google Sheets Datei "Eigenwerk Aufgaben" und gib alle Zeilen zurück als JSON Array: [{"text":"...","status":"...","cat":"...","biz":"s","assignees":[],"min":20}]. Nur JSON, kein anderer Text.'}],
-      mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'google-drive'}]})
-  }).then(function(r){return r.json();}).then(function(d){
-    var txt=d.content.filter(function(x){return x.type==='text';}).map(function(x){return x.text;}).join('');
-    var clean=txt.replace(/```json|```/g,'').trim();
-    var items=JSON.parse(clean);
-    var added=0;
-    items.forEach(function(item){
-      if(item.text&&!tasks.find(function(t){return t.text===item.text;})){
-        tasks.push(Object.assign({id:uid(),slots:[]},item));added++;
-      }
-    });
-    sl();toast('✅ '+added+' neue Aufgaben geladen');render();
-  }).catch(function(){toast('⚠️ Sheets laden fehlgeschlagen');});
+  toast('ℹ️ Google Sheets nicht verbunden');
+  return Promise.resolve();
 }
 
 // ── PLANER ────────────────────────────────────────────────────
@@ -1589,18 +1557,8 @@ var ssAnmeldungen=[],ssKurse=[],ssAlerts=[];
 var ssLastCheck=localStorage.getItem('ew_v2:ss_check')||'';
 
 function ssNotionFetch(dbId,question,cb){
-  if(!getApiKey()){cb(null,'no-key');return;}
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,
-      messages:[{role:'user',content:question}],
-      mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]})
-  }).then(function(r){return r.json();})
-  .then(function(d){
-    var txt=(d.content||[]).filter(function(x){return x.type==='text';}).map(function(x){return x.text;}).join('');
-    try{var clean=txt.replace(/```json|```/g,'').trim();cb(JSON.parse(clean));}
-    catch(e){cb(null,txt);}
-  }).catch(function(e){cb(null,'error');});
+  // Browser-direkte Anthropic-API nicht verfügbar → Nutze notionQueryDB stattdessen
+  cb(null,'no-key');
 }
 
 function loadSSAnmeldungen(){
@@ -1661,25 +1619,26 @@ function loadSSBestand(){
 
 
 function pullFromStahlSeele(){
-  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return;}
   toast('⏳ Lade Stahl & Seele von Notion…');
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
-      messages:[{role:'user',content:'Lese alle Einträge aus Notion DB '+SSDBID+' und gib sie zurück als JSON Array: [{"text":"...","status":"offen","cat":"Kurs-Entwicklung"}]. Nur JSON.'}],
-      mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]})
-  }).then(function(r){return r.json();}).then(function(d){
-    var txt=d.content.filter(function(x){return x.type==='text';}).map(function(x){return x.text;}).join('');
-    var clean=txt.replace(/```json|```/g,'').trim();
-    var items=JSON.parse(clean);
+  notionQueryDB(SSDBID,function(data){
+    if(!data||!data.results){toast('⚠️ Fehler beim Laden');return;}
     var added=0;
-    items.forEach(function(item){
-      if(item.text&&!tasks.find(function(t){return t.text===item.text;})){
-        tasks.push(Object.assign({id:uid(),slots:[],biz:'a',assignees:[]},item));added++;
-      }
+    data.results.forEach(function(p){
+      var props=p.properties||{};
+      var nameProp=props['Name']||props['Aufgabe']||props['Titel']||Object.values(props).find(function(v){return v.type==='title';});
+      var text=nameProp&&nameProp.title?nameProp.title.map(function(t){return t.plain_text;}).join(''):null;
+      if(!text)return;
+      if(tasks.find(function(t){return t.text===text;}))return;
+      var statusProp=props['Status']||{};
+      var status=statusProp.select?statusProp.select.name:(statusProp.status?statusProp.status.name:'offen');
+      var catProp=props['Kategorie']||props['Bereich']||{};
+      var cat=catProp.rich_text?catProp.rich_text.map(function(t){return t.plain_text;}).join(''):catProp.select?catProp.select.name:'Kurs-Entwicklung';
+      tasks.push({id:uid(),text:text,status:status||'offen',cat:cat,biz:'a',assignees:[],slots:[],min:25});
+      added++;
     });
-    sl();render();toast('✅ '+added+' Aufgaben geladen');
-  }).catch(function(){toast('⚠️ Fehler beim Laden');});
+    sl();render();
+    toast(added>0?'✅ '+added+' Aufgaben geladen':'ℹ️ Keine neuen Aufgaben');
+  });
 }
 
 function quickSaveToApp(){
@@ -1694,15 +1653,20 @@ function quickSaveToNotion(){
   var inp=document.getElementById('kumpel-inp');
   var t=(kumpelInputText||'').trim()||(inp&&inp.value)||'';t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
-  var text=inp.value.trim();
+  var token=getRalfToken();
+  if(!token){toast('⚠️ Kein Schlosserei-Token – in Einstellungen eintragen');return;}
   toast('⏳ Wird zu Notion gespeichert…');
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,
-      messages:[{role:'user',content:'Erstelle einen neuen Eintrag in der Notion DB '+NDBID+' mit dem Titel: "'+text+'" und Status "offen". Bestätige kurz.'}],
-      mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]})
-  }).then(function(){inp.value='';toast('✅ In Notion gespeichert!');})
-  .catch(function(){toast('⚠️ Notion-Fehler – lokal gespeichert');addKumpelNote();});
+  var props={'Name':{title:[{text:{content:t}}]},'Status':{select:{name:'offen'}}};
+  notionAPI('pages','POST',{parent:{database_id:NDBID},properties:props},function(d){
+    if(d&&d.id){
+      if(inp)inp.value='';
+      kumpelInputText='';
+      toast('✅ In Notion gespeichert!');
+    } else {
+      toast('⚠️ Notion-Fehler – lokal gespeichert');
+      addKumpelNote();
+    }
+  },token);
 }
 
 // ── RENDER ────────────────────────────────────────────────────
