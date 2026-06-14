@@ -1340,16 +1340,24 @@ var ss3Tasks=JSON.parse(localStorage.getItem('ew_v2:3tasks')||'[]');
 var ss3TasksDate=localStorage.getItem('ew_v2:3tasks_date')||'';
 
 function testNotionConnection(){
-  var token=getRalfToken()||getNotionToken();
-  if(!token){toast('⚠️ Kein Token! Bitte in Einstellungen eintragen.');return;}
-  toast('⏳ Teste Notion-Verbindung…');
-  fetch('/.netlify/functions/notion',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({path:'users/me',method:'GET',token:token})
-  }).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.id){toast('✅ Notion verbunden! ('+( d.name||d.type||'OK')+')');
-    }else if(d&&d.object==='error'){toast('⚠️ Notion Fehler: '+d.message);
-    }else{toast('⚠️ Unbekannte Antwort: '+JSON.stringify(d).slice(0,60));}
-  }).catch(function(e){toast('⚠️ Netzwerkfehler: '+e.message);});
+  var ralfToken=getRalfToken();
+  var siljaToken=getNotionToken();
+  if(!ralfToken&&!siljaToken){toast('⚠️ Kein Token gesetzt! → Einstellungen → API-Keys');return;}
+  toast('⏳ Prüfe beide Tokens…');
+  function testOne(label,token,cb){
+    if(!token){cb('❌ '+label+': nicht eingetragen');return;}
+    fetch('/.netlify/functions/notion',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:'users/me',method:'GET',token:token})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.id)cb('✅ '+label+': OK');
+      else cb('❌ '+label+': '+(d&&d.message?d.message.slice(0,50):'ungültig'));
+    }).catch(function(){cb('❌ '+label+': Netzwerkfehler');});
+  }
+  testOne('Ralfs Token',ralfToken,function(r1){
+    testOne('Siljas Token',siljaToken,function(r2){
+      alert(r1+'\n\n'+r2);
+    });
+  });
 }
 
 function sync3TasksToNotion(){
