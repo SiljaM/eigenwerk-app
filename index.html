@@ -886,7 +886,7 @@ function rHeute(){
   var now=new Date();
   var setupBanner='';
   var gr=now.getHours()<12?'Morgen':now.getHours()<18?'Tag':'Abend';
-  var urg=tasks.filter(function(t){return t.cat==='Rechnungen & Angebote'&&t.status!=='erledigt';}).slice(0,3);
+  var urg=tasks.filter(function(t){var asgn=t.assignees||[];return t.cat==='Rechnungen & Angebote'&&t.status!=='erledigt'&&(asgn.length===0||asgn.includes('ralf'));}).slice(0,3);
   var wl=weekWorkload();
   var maxH=Math.max.apply(null,wl.concat([60]));
   var wHTML=WD.map(function(d,i){
@@ -898,7 +898,10 @@ function rHeute(){
   function blkRow(b){
     if(b.type==='p')return '<div class="blk"><span class="blk-t">'+b.time+'</span><span class="blk-d bp2"></span><div class="blk-b"><div class="blk-l bl-p">'+b.lbl+'</div></div></div>';
     var done=pDone[b.id];
-    var task=tasks.filter(function(t){return t.biz===(b.type==='s'?'s':'a')&&t.status!=='erledigt';})[0];
+    var _allCand=tasks.filter(function(t){return t.biz===(b.type==='s'?'s':'a')&&t.status!=='erledigt';});
+    var _ralfT=_allCand.filter(function(t){return (t.assignees||[]).includes('ralf');});
+    var _freeT=_allCand.filter(function(t){return (t.assignees||[]).length===0;});
+    var task=_ralfT[0]||_freeT[0]||null;
     var tname=task?task.text:'Aufgabe wählen';
     return '<div class="blk" style="cursor:pointer" onclick="togglePlaner(\''+b.id+'\')"><span class="blk-t">'+b.time+'</span><span class="blk-d b'+(b.type==='a'?'a':'s')+'"></span><div class="blk-b"><div class="blk-l bl-'+(b.type==='a'?'a':'s')+'">'+b.lbl+'</div><div class="blk-n'+(task?'':' empty')+'" '+(task?'onclick="event.stopPropagation();openDetail(\''+task.id+'\')"':'')+'>'+(done?'✅ ':'')+tname+(task&&!done?' <span style="font-size:10px;color:var(--rust)">→ öffnen</span>':'')+'</div></div><button class="blk-btn'+(done?' done':'')+'" onclick="event.stopPropagation();togglePlaner(\''+b.id+'\')";style="min-width:36px">'+(done?'✓':'▶')+'</button></div>';
   }
@@ -1354,7 +1357,8 @@ function sync3TasksToNotion(){
   // Top 3: erst Ralf-zugewiesene, sonst allgemein offene
   var top3=tasks.filter(function(t){return t.status!=='erledigt'&&(t.assignees||[]).includes('ralf');}).slice(0,3);
   if(top3.length<3){
-    var rest=tasks.filter(function(t){return t.status!=='erledigt'&&!(t.assignees||[]).includes('ralf');});
+    // Nur nicht-zugewiesene Aufgaben auffüllen — NICHT Julies oder andere Personen
+    var rest=tasks.filter(function(t){return t.status!=='erledigt'&&(t.assignees||[]).length===0;});
     top3=top3.concat(rest).slice(0,3);
   }
   if(top3.length===0){toast('ℹ️ Keine offenen Aufgaben vorhanden');return;}
