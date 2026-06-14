@@ -1108,12 +1108,6 @@ function rSettings(){
     +'<div style="margin-top:6px;font-size:11px;color:'+(getRalfToken()?'var(--grn)':'var(--red)')+';">'+(getRalfToken()?'✅ Aktiv':'⚠️ Fehlt')+'</div>'
     +'</div>'
     +'</div>'
-    +'<div class="card"><div class="ct">Meine Identität</div>'
-    +'<div class="tr"><span style="font-size:20px">👤</span><div class="tb"><div class="tn">Ich bin…</div></div></div>'
-    +'<div style="padding:0 14px 14px;display:flex;flex-wrap:wrap;gap:8px">'
-    +AS.map(function(a){var on=myIdentity===a.id;return '<button onclick="myIdentity=\''+a.id+'\';localStorage.setItem(\''+LK+':ich\',\''+a.id+'\');render()" style="padding:8px 14px;border-radius:20px;border:2px solid '+(on?'var(--rust)':'var(--bdr)')+';background:'+(on?'var(--rust)':'transparent')+';color:'+(on?'white':'#2A2218')+';font-size:13px;font-weight:'+(on?'700':'400')+';cursor:pointer">'+a.icon+' '+a.name+'</button>';}).join('')
-    +'</div>'
-    +'</div>'
     +'<div class="card"><div class="ct">Sicherheit</div>'
     +'<div class="tr" onclick="pinMode=\'set\';pinIn=\'\';pinErr=\'\';document.getElementById(\'pin-scr\').style.display=\'flex\';document.getElementById(\'app\').style.display=\'none\';renderPin()">'
     +'<span style="font-size:20px">🔐</span><div class="tb"><div class="tn">PIN '+(hasPin?'ändern':'erstellen')+'</div></div><span class="tarr">›</span></div></div>'
@@ -1313,7 +1307,7 @@ function rKumpel(){
 }
 
 // ── IDENTITÄT & TEAM AUFGABEN ─────────────────────────────────
-var myIdentity=localStorage.getItem(LK+':ich')||'ralf';
+var myIdentity='ralf';
 var teamTasksList=JSON.parse(localStorage.getItem(LK+':teamtasks')||'[]');
 
 // ── RALFS 3 TAGESAUFGABEN ─────────────────────────────────────
