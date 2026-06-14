@@ -1578,9 +1578,12 @@ function ssNotionFetch(dbId,question,cb){
 }
 
 function loadSSAnmeldungen(){
+  if(!getNotionToken()){toast('⚠️ Kein Stahl & Seele Token → Einstellungen → "Notion Token — Siljas Workspace"');return;}
   toast('⏳ Lade neue Anmeldungen…');
   notionQueryDB(SS_ANMELDUNGEN, function(data){
-    if(!data||!data.results){toast('⚠️ Anmeldungen konnten nicht geladen werden');return;}
+    if(!data){toast('⚠️ Keine Antwort von Notion');return;}
+    if(data.object==='error'){toast('⚠️ Notion: '+data.message);return;}
+    if(!data.results){toast('⚠️ Anmeldungen konnten nicht geladen werden');return;}
     var known=JSON.parse(localStorage.getItem('ew_v2:ss_known')||'[]');
     var parsed=data.results.map(function(p){
       var props=p.properties||{};
@@ -1635,9 +1638,12 @@ function loadSSBestand(){
 
 
 function pullFromStahlSeele(){
+  if(!getNotionToken()){toast('⚠️ Kein Stahl & Seele Token → Einstellungen → "Notion Token — Siljas Workspace"');return;}
   toast('⏳ Lade Stahl & Seele von Notion…');
   notionQueryDB(SSDBID,function(data){
-    if(!data||!data.results){toast('⚠️ Fehler beim Laden');return;}
+    if(!data){toast('⚠️ Keine Antwort von Notion');return;}
+    if(data.object==='error'){toast('⚠️ Notion: '+data.message);return;}
+    if(!data.results){toast('⚠️ Fehler beim Laden');return;}
     var added=0;
     data.results.forEach(function(p){
       var props=p.properties||{};
