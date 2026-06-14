@@ -714,19 +714,9 @@ function updateSyncBadge(){
 }
 
 function syncBoth(showToast){
-  if(showToast===undefined)showToast=true;
-  syncState='syncing';updateSyncBadge();
-  var p1=syncToNotion(false);
-  var p2=syncToSheets(false);
-  Promise.all([p1,p2]).then(function(){
-    syncState='ok';updateSyncBadge();
-    if(showToast)toast('✅ Notion + Sheets synchronisiert');
-    setTimeout(function(){syncState='idle';updateSyncBadge();},4000);
-  }).catch(function(){
-    syncState='error';updateSyncBadge();
-    if(showToast)toast('⚠️ Sync teilweise fehlgeschlagen');
-    setTimeout(function(){syncState='idle';updateSyncBadge();},4000);
-  });
+  // Direkte Anthropic-Browser-API nicht verfügbar → kein Fehler zeigen
+  // Sync läuft über: pushTaskToNotion (bei Zuweisung) + sync3TasksToNotion (manuell)
+  syncState='idle';updateSyncBadge();
 }
 
 function getApiKey(){return localStorage.getItem(LK+':apikey')||'';}
@@ -744,16 +734,9 @@ function tokenForDB(dbId){
 function apiHeaders(){return{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-beta':'mcp-client-2025-04-04','anthropic-dangerous-direct-browser-access':'true'};}
 
 function syncToNotion(showToast){
-  if(showToast===undefined)showToast=true;
-  if(!getApiKey()){toast('ℹ️ Notion-Sync: API-Key in Einstellungen eintragen');return Promise.reject('no key');}
-  if(showToast)toast('⏳ Notion...');
-  var data=tasks.filter(function(t){return t.biz==='s';}).slice(0,20).map(function(t){return {id:t.id,title:t.text,status:t.status,cat:t.cat,biz:t.biz==='s'?'Schlosserei':'Stahl & Seele',assignees:(t.assignees||[]).join(', ')};});
-  return fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:apiHeaders(),
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,
-      messages:[{role:'user',content:'Sync Aufgaben Notion DB '+NDBID+': '+JSON.stringify(data)}],
-      mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}]})
-  }).then(function(r){return r.json();}).then(function(){if(showToast)toast('✅ Notion sync');}).catch(function(e){if(showToast)toast('⚠️ Notion Fehler');throw e;});
+  // Läuft jetzt über pushTaskToNotion (Netlify-Proxy) bei jeder Zuweisung
+  if(showToast)toast('ℹ️ Sync läuft automatisch bei Zuweisung');
+  return Promise.resolve();
 }
 
 function syncToStahlSeeleNotion(showToast){
@@ -977,8 +960,7 @@ function rHeute(){
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
         +'<div style="font-size:13px;font-weight:700;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Deine 3 für heute</div>'
         +'<div style="display:flex;gap:6px">'
-        +'<button onclick="sync3TasksToNotion()" style="background:var(--rust);border:none;color:white;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700">⬆️ Sync</button>'
-        +'<button onclick="load3Tasks()" style="background:none;border:1px solid var(--bdr);color:var(--mut);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">'+(isToday?'🔄':'📥')+'</button>'
+        +'<button onclick="sync3TasksToNotion()" style="background:var(--rust);border:none;color:white;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700">⬆️ Top 3 → Notion</button>'
         +'</div>'
         +'</div>';
       if(!isToday||ss3Tasks.length===0){
