@@ -1543,11 +1543,11 @@ function setMyIdentity(id){
 
 // ── DIREKTE NOTION API (über Netlify Proxy) ───────────────────
 function notionAPI(path, method, body, cb, forceToken){
-  var token=forceToken||getRalfToken()||getNotionToken();
+  // Token wird serverseitig über NOTION_TOKEN Env-Variable bereitgestellt
   fetch('/.netlify/functions/notion', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({path:path, method:method||'GET', body:body||null, token:token})
+    body: JSON.stringify({path:path, method:method||'GET', body:body||null, token:null})
   })
   .then(function(r){return r.json();})
   .then(function(d){cb(d);})
