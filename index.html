@@ -505,6 +505,8 @@ function runBreathPhase(phase,secs){
 var kumpelNotes=JSON.parse(localStorage.getItem(LK+':knotes')||'[]');
 var kumpelAiReply='';
 var kumpelInputText='';
+var kumpelHistory=[];   // [{who:'ralf'|'kumpel', text:'...'}]
+var kumpelSaveProposal=''; // Vorschlag vom Kumpel was gespeichert werden soll
 var kumpelInput='';
 function saveKumpelNotes(){localStorage.setItem(LK+':knotes',JSON.stringify(kumpelNotes));}
 // ── SPRACHEINGABE ─────────────────────────────────────────────
@@ -580,8 +582,8 @@ function executeKumpelAction(raw){
   }
   return text;
 }
-function askClaude(prompt){
-  kumpelAiReply='__loading__';render();
+function askClaude(prompt,onDone){
+  kumpelAiReply='__loading__';kumpelSaveProposal='';render();
   fetch('/.netlify/functions/claude',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -589,9 +591,41 @@ function askClaude(prompt){
   }).then(function(r){return r.json();})
   .then(function(d){
     var raw=d.content&&d.content[0]?d.content[0].text:(d.error?'⚠️ '+d.error:'Keine Antwort erhalten.');
-    kumpelAiReply=executeKumpelAction(raw);
-    kumpelInputText='';render();
-  }).catch(function(){kumpelAiReply='⚠️ Verbindungsfehler.';render();});
+    if(onDone){onDone(raw);}
+    else{
+      kumpelAiReply=executeKumpelAction(raw);
+      kumpelHistory.push({who:'kumpel',text:kumpelAiReply});
+      kumpelInputText='';render();
+    }
+  }).catch(function(){
+    if(onDone){onDone('⚠️ Verbindungsfehler.');}
+    else{kumpelAiReply='⚠️ Verbindungsfehler.';render();}
+  });
+}
+function proposeKumpelSave(){
+  if(kumpelHistory.length===0){
+    // Kein Verlauf — direkt letzte Antwort speichern
+    if(kumpelAiReply&&kumpelAiReply!=='__loading__'){
+      kumpelSaveProposal=kumpelAiReply;render();
+    }
+    return;
+  }
+  kumpelAiReply='__loading__';render();
+  var verlauf=kumpelHistory.map(function(h){return (h.who==='ralf'?'Ralf: ':'Kumpel: ')+h.text;}).join('\n');
+  var synthesePrompt='Hier ist ein Gespräch zwischen Ralf und seinem Kumpel:\n\n'+verlauf+'\n\nRalf will jetzt etwas davon in seinen Notizen speichern.\n\nFasse das Wichtigste aus dem Gespräch in 2-4 kurzen Stichpunkten zusammen (als Kernaussage/Ergebnis, nicht das ganze Gespräch). Schreib nur die Stichpunkte, ohne Einleitung. Beginne jeden Punkt mit einem Gedankenstrich (-).';
+  askClaude(synthesePrompt,function(raw){
+    kumpelAiReply='';
+    kumpelSaveProposal=raw.replace(/^[-•*]\s*/mg,'• ').trim();
+    render();
+  });
+}
+function confirmKumpelSave(){
+  if(!kumpelSaveProposal)return;
+  var bullets=kumpelSaveProposal.split('\n').map(function(l){return l.replace(/^[-•*]\s*/,'• ').trim();}).filter(function(l){return l.length>0;}).join('\n');
+  kumpelNotes.unshift({id:uid(),text:bullets,ts:new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  saveKumpelNotes();
+  kumpelSaveProposal='';kumpelAiReply='';kumpelShowNotes=true;kumpelHistory=[];
+  toast('✅ In Notizen gespeichert');render();
 }
 
 function addT(d){tasks.unshift(Object.assign({id:uid(),slots:[]},d));sl();toast('✅ Hinzugefügt');scheduleSync();}
@@ -1186,6 +1220,7 @@ function sendKumpel(){
   var t=(kumpelInputText||'').trim()||(document.getElementById('kumpel-inp')||{}).value||'';
   t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
+  kumpelHistory.push({who:'ralf',text:t});
   // Aktuelle Aufgaben + Team als Kontext aufbauen
   var offeneAufgaben=tasks.filter(function(t){return t.status!=='erledigt';}).slice(0,20);
   var aufgabenListe=offeneAufgaben.length>0
@@ -1195,9 +1230,19 @@ function sendKumpel(){
   var systemPrompt='Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","assignee":"<person-id>"}]\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+'\n\nRalfs Gedanken: '+t;
   askClaude(systemPrompt);
 }
+function textToBullets(txt){
+  // Zeilen splitten, leere raus, mit • prefixen
+  var lines=txt.split(/\n+/).map(function(l){return l.replace(/^[-•*]\s*/,'').trim();}).filter(function(l){return l.length>0;});
+  if(lines.length<=1){
+    // Einzelner Text: nach Satzzeichen splitten
+    lines=txt.split(/(?<=[.!?])\s+/).map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+  }
+  return lines.map(function(l){return '• '+l;}).join('\n');
+}
 function saveReplyAsNote(){
   if(!kumpelAiReply||kumpelAiReply==='__loading__')return;
-  kumpelNotes.unshift({id:uid(),text:kumpelAiReply,ts:new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  var bullets=textToBullets(kumpelAiReply);
+  kumpelNotes.unshift({id:uid(),text:bullets,ts:new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});
   saveKumpelNotes();
   kumpelAiReply='';kumpelShowNotes=true;
   toast('✅ In Notizen gespeichert');render();
@@ -1214,14 +1259,24 @@ function rKumpel(){
     +'</div>'
     +'</div>';
 
-  if(kumpelAiReply==='__loading__'){
+  if(kumpelSaveProposal){
+    // Save-Proposal Ansicht: Kumpel zeigt Zusammenfassung zur Bestätigung
+    html+='<div class="kumpel-ai-response" style="border-color:#22C55E">'
+      +'<div class="kumpel-ai-label" style="color:#22C55E">📋 Das würde ich speichern:</div>'
+      +'<div class="kumpel-ai-text">'+kumpelSaveProposal.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button onclick="kumpelSaveProposal=\'\';render()" style="flex:1;padding:8px;border-radius:8px;background:#E5DDD4;color:#2A2218;border:none;font-size:12px;cursor:pointer">✕ Abbrechen</button>'
+      +'<button onclick="confirmKumpelSave()" style="flex:1;padding:8px;border-radius:8px;background:#22C55E;color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">✅ Ja, speichern</button>'
+      +'</div>'
+      +'</div>';
+  } else if(kumpelAiReply==='__loading__'){
     html+='<div class="kumpel-thinking"><div class="kumpel-dot"></div><div class="kumpel-dot"></div><div class="kumpel-dot"></div><span>Kumpel denkt…</span></div>';
   } else if(kumpelAiReply){
     html+='<div class="kumpel-ai-response">'
       +'<div class="kumpel-ai-text">'+kumpelAiReply.replace(/\n/g,'<br>')+'</div>'
       +'<div style="display:flex;gap:8px;margin-top:10px">'
       +'<button onclick="kumpelAiReply=\'\';kumpelInputText=\'\';render()" style="flex:1;padding:8px;border-radius:8px;background:#E5DDD4;color:#2A2218;border:none;font-size:12px;cursor:pointer">✕ Schließen</button>'
-      +'<button onclick="saveReplyAsNote()" style="flex:1;padding:8px;border-radius:8px;background:var(--rust);color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">📌 Speichern</button>'
+      +'<button onclick="proposeKumpelSave()" style="flex:1;padding:8px;border-radius:8px;background:var(--rust);color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">📌 Speichern</button>'
       +'</div>'
       +'</div>';
   }
@@ -1237,7 +1292,7 @@ function rKumpel(){
     if(notes.length){
       notes.forEach(function(n){
         html+='<div class="kumpel-note" style="margin-top:8px">'
-          +'<div class="kumpel-note-text">'+n.text.replace(/</g,'&lt;')+'</div>'
+          +'<div class="kumpel-note-text">'+n.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'
           +'<div class="kumpel-note-meta"><span>'+n.ts+'</span>'
           +'<button class="kumpel-note-del" onclick="delKumpelNote(\''+n.id+'\')">🗑</button></div>'
           +'</div>';
