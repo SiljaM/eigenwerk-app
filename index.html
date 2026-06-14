@@ -590,7 +590,8 @@ function askClaude(prompt,onDone){
     body:JSON.stringify({prompt:prompt,max_tokens:700})
   }).then(function(r){return r.json();})
   .then(function(d){
-    var raw=d.content&&d.content[0]?d.content[0].text:(d.error?'⚠️ '+d.error:'Keine Antwort erhalten.');
+    var errMsg=d.error?(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error))):null;
+    var raw=d.content&&d.content[0]?d.content[0].text:(errMsg?'⚠️ '+errMsg:'Keine Antwort erhalten.');
     if(onDone){onDone(raw);}
     else{
       kumpelAiReply=executeKumpelAction(raw);
