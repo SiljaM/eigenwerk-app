@@ -931,6 +931,7 @@ function rHeute(){
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
         +'<div style="font-size:13px;font-weight:700;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Deine 3 für heute</div>'
         +'<div style="display:flex;gap:6px">'
+        +'<button onclick="load3Tasks()" style="background:var(--card);border:1px solid var(--bdr);color:var(--fg);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">🔄</button>'
         +'<button onclick="sync3TasksToNotion()" style="background:var(--rust);border:none;color:white;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700">⬆️ Top 3 → Notion</button>'
         +'</div>'
         +'</div>';
@@ -1589,12 +1590,25 @@ function ssNotionFetch(dbId,question,cb){
   cb(null,'no-key');
 }
 
+function notionErrAlert(data,label){
+  if(!data){toast('⚠️ Keine Antwort von Notion');return true;}
+  if(data.object==='error'){
+    var msg=data.message||data.code||'Unbekannter Fehler';
+    if(msg.toLowerCase().includes('make sure')||msg.toLowerCase().includes('not_found')||msg.toLowerCase().includes('restricted')){
+      alert('⚠️ Notion: Kein Zugriff auf '+label+'\n\nFix in Notion:\n1. Datenbank öffnen\n2. ••• → Verbindungen\n3. Siljas Integration hinzufügen\n\nFehler: '+msg);
+    } else {
+      alert('⚠️ Notion Fehler ('+label+'):\n\n'+msg);
+    }
+    return true;
+  }
+  return false;
+}
 function loadSSAnmeldungen(){
   if(!getNotionToken()){toast('⚠️ Kein Stahl & Seele Token → Einstellungen → "Notion Token — Siljas Workspace"');return;}
   toast('⏳ Lade neue Anmeldungen…');
   notionQueryDB(SS_ANMELDUNGEN, function(data){
-    if(!data){toast('⚠️ Keine Antwort von Notion');return;}
-    if(data.object==='error'){toast('⚠️ Notion: '+data.message);return;}
+    if(notionErrAlert(data,'SS Anmeldungen'))return;
+    if(!data.results){toast('⚠️ Anmeldungen konnten nicht geladen werden');return;}
     if(!data.results){toast('⚠️ Anmeldungen konnten nicht geladen werden');return;}
     var known=JSON.parse(localStorage.getItem('ew_v2:ss_known')||'[]');
     var parsed=data.results.map(function(p){
@@ -1653,8 +1667,7 @@ function pullFromStahlSeele(){
   if(!getNotionToken()){toast('⚠️ Kein Stahl & Seele Token → Einstellungen → "Notion Token — Siljas Workspace"');return;}
   toast('⏳ Lade Stahl & Seele von Notion…');
   notionQueryDB(SSDBID,function(data){
-    if(!data){toast('⚠️ Keine Antwort von Notion');return;}
-    if(data.object==='error'){toast('⚠️ Notion: '+data.message);return;}
+    if(notionErrAlert(data,'Stahl & Seele Aufgaben'))return;
     if(!data.results){toast('⚠️ Fehler beim Laden');return;}
     var added=0;
     data.results.forEach(function(p){
