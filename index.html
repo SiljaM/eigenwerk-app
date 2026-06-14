@@ -1104,7 +1104,10 @@ function rSettings(){
     +'<input id="ralf-token-in" type="password" placeholder="secret_..." value="'+getRalfToken()+'" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bdr);background:var(--bg);color:var(--txt);font-size:13px;font-family:inherit">'
     +'<button onclick="var v=document.getElementById(\'ralf-token-in\').value.trim();localStorage.setItem(\''+LK+':ralftoken\',v);toast(v?\'✅ Gespeichert\':\'🗑 Gelöscht\');render()" style="padding:10px 14px;border-radius:10px;background:var(--blue);color:white;border:none;font-size:13px;font-weight:700;cursor:pointer">Sichern</button>'
     +'</div>'
-    +'<div style="margin-top:6px;font-size:11px;color:'+(getRalfToken()?'var(--grn)':'var(--red)')+';">'+(getRalfToken()?'✅ Aktiv':'⚠️ Fehlt')+'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">'
+    +'<span style="font-size:11px;color:'+(getRalfToken()?'var(--grn)':'var(--red)')+';">'+(getRalfToken()?'✅ Aktiv':'⚠️ Fehlt – bitte eintragen')+'</span>'
+    +(getRalfToken()?'<button onclick="testNotionConnection()" style="padding:4px 10px;border-radius:8px;background:var(--card);border:1px solid var(--bdr);color:var(--txt);font-size:11px;cursor:pointer">🔌 Verbindung testen</button>':'')
+    +'</div>'
     +'</div>'
     +'</div>'
     +'<div class="card"><div class="ct">Sicherheit</div>'
@@ -1333,8 +1336,21 @@ var teamTasksList=JSON.parse(localStorage.getItem(LK+':teamtasks')||'[]');
 var ss3Tasks=JSON.parse(localStorage.getItem('ew_v2:3tasks')||'[]');
 var ss3TasksDate=localStorage.getItem('ew_v2:3tasks_date')||'';
 
+function testNotionConnection(){
+  var token=getRalfToken()||getNotionToken();
+  if(!token){toast('⚠️ Kein Token! Bitte in Einstellungen eintragen.');return;}
+  toast('⏳ Teste Notion-Verbindung…');
+  fetch('/.netlify/functions/notion',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({path:'users/me',method:'GET',token:token})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.id){toast('✅ Notion verbunden! ('+( d.name||d.type||'OK')+')');
+    }else if(d&&d.object==='error'){toast('⚠️ Notion Fehler: '+d.message);
+    }else{toast('⚠️ Unbekannte Antwort: '+JSON.stringify(d).slice(0,60));}
+  }).catch(function(e){toast('⚠️ Netzwerkfehler: '+e.message);});
+}
+
 function sync3TasksToNotion(){
-  if(!getRalfToken()){toast('ℹ️ Bitte Ralfs Notion-Token in Einstellungen eintragen');return;}
+  if(!getRalfToken()){toast('⚠️ Kein Notion-Token! → Einstellungen → Ralfs Notion-Token eintragen');return;}
   // Top 3: erst Ralf-zugewiesene, sonst allgemein offene
   var top3=tasks.filter(function(t){return t.status!=='erledigt'&&(t.assignees||[]).includes('ralf');}).slice(0,3);
   if(top3.length<3){
@@ -1533,7 +1549,7 @@ function notionCreatePage(dbId, props, cb){
 function pushTaskToNotion(task){
   // Token und DB je nach Bereich wählen
   var token=task.biz==='a'?getNotionToken():getRalfToken();
-  if(!token){return;} // kein Token → still überspringen
+  if(!token){toast('ℹ️ Notion-Token fehlt – in Einstellungen eintragen');return;}
   var dbId=task.biz==='a'?SSDBID:NDBID;
   var assigneeNames=(task.assignees||[]).map(function(id){
     var p=AS.find(function(x){return x.id===id;});
