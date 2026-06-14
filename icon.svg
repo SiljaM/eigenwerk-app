@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Hintergrund dunkelbraun -->
+  <rect width="512" height="512" rx="88" fill="#3D1810"/>
+  <!-- Oranger Querstreifen -->
+  <rect x="0" y="196" width="512" height="120" fill="#E8700A"/>
+  <!-- Weißer Kreis -->
+  <circle cx="256" cy="256" r="185" fill="white"/>
+  <!-- Oranger Ring -->
+  <circle cx="256" cy="256" r="185" fill="none" stroke="#E8700A" stroke-width="18"/>
+
+  <!-- HAMMER (oben-links → unten-rechts, ca -40°) -->
+  <g transform="translate(220,248) rotate(-38)">
+    <!-- Griff -->
+    <rect x="-11" y="5" width="22" height="130" rx="8" fill="#3D1810"/>
+    <!-- Kopf -->
+    <rect x="-38" y="-52" width="76" height="62" rx="8" fill="#3D1810"/>
+    <!-- Klaue links -->
+    <path d="M-38,-52 Q-68,-90 -58,-108 Q-42,-88 -38,-68 Z" fill="#3D1810"/>
+    <!-- Klaue rechts -->
+    <path d="M-10,-52 Q-10,-92 0,-106 Q8,-90 2,-68 Z" fill="#3D1810"/>
+  </g>
+
+  <!-- SÄGE (oben-rechts → unten-links, ca +38°) -->
+  <g transform="translate(268,248) rotate(38)">
+    <!-- Blatt -->
+    <rect x="-12" y="-140" width="24" height="145" rx="4" fill="#3D1810"/>
+    <!-- Säge-Zähne -->
+    <path d="M-12,-140 L12,-140 L12,-20
+      L8,-10 L4,-20 L0,-10 L-4,-20 L-8,-10 L-12,-20 Z"
+      fill="#3D1810"/>
+    <!-- Griff (Pistolengriff) -->
+    <rect x="-18" y="5" width="36" height="60" rx="10" fill="#3D1810"/>
+    <!-- Griffloch -->
+    <rect x="-8" y="14" width="26" height="22" rx="6" fill="white"/>
+    <!-- Griffverstärkung oben -->
+    <rect x="-24" y="0" width="48" height="14" rx="4" fill="#3D1810"/>
+  </g>
+</svg>
