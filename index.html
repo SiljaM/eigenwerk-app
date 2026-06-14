@@ -266,11 +266,11 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <div id="pin-scr" class="pin-scr"></div>
 <div id="app" style="display:none"></div>
 <script>
-const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='728469f1-0a8a-4126-9c6f-da74f60e8b29';
-const SS_KURSE='ed0d4041-50ab-4d96-bd3d-cb3d5c951385';
-const SS_BESTAND='86c1b42f-82e6-4d0e-b0d5-5c6b2be0dc17';
-const SS_ANMELDUNGEN=''; // Kein eigenes Anmeldungen-DB in aktueller Notion-Struktur
-const SS_3TASKS='37e0024c-8546-8166-991c-ebb452d595ba'; // Cockpit – Heute Seiten-ID (Ralfs Workspace) – to_do Blöcke sind direkte Kinder der Seite
+const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='b850024c-8546-83aa-aa48-81081a11fba0'; // Kopie 12:39
+const SS_KURSE='2080024c-8546-8344-bbaa-818a0a9ed77f'; // Kopie 12:39
+const SS_BESTAND='7f80024c-8546-8326-a1dd-018b0b3e933e'; // Kopie 12:39
+const SS_ANMELDUNGEN=''; // Kein eigenes Anmeldungen-DB
+const SS_3TASKS='b5d0024c-8546-8325-83f9-811b8d2af2f3'; // Cockpit – Heute Kopie 12:39 – to_do Blöcke sind direkte Kinder der Seite
 const COCKPIT_PAGE='3570024c-8546-8001-ac9f-cd50a951fec4';
 const SS_PRODUKTE=[
   {name:'Der erste Funke',emoji:'🔥',preis:149},
@@ -726,9 +726,10 @@ var RALF_TOKEN_DEFAULT='';
 function getRalfToken(){return localStorage.getItem(LK+':ralftoken')||RALF_TOKEN_DEFAULT;}
 
 // Welcher Token für welche DB?
-var SS_DBS=[SSDBID,SS_KURSE,SS_BESTAND,SS_ANMELDUNGEN]; // SS_3TASKS ist jetzt in Ralfs Workspace
+// Alle DBs sind in Ralfs Workspace (Kopie 12:39) → immer getRalfToken()
+var SS_DBS=[SSDBID,SS_KURSE,SS_BESTAND].filter(Boolean);
 function tokenForDB(dbId){
-  return SS_DBS.some(function(id){return dbId&&dbId.includes(id.replace(/-/g,'').slice(0,8));}) ? getNotionToken() : getRalfToken();
+  return getRalfToken()||getNotionToken();
 }
 
 function apiHeaders(){return{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-beta':'mcp-client-2025-04-04','anthropic-dangerous-direct-browser-access':'true'};}
