@@ -266,7 +266,7 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <div id="pin-scr" class="pin-scr"></div>
 <div id="app" style="display:none"></div>
 <script>
-const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='b850024c-8546-83aa-aa48-81081a11fba0'; // Kopie 12:39
+const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='94cb7386-72ef-828e-bbe8-018ac26f793b';
 const SS_KURSE='2080024c-8546-8344-bbaa-818a0a9ed77f'; // Kopie 12:39
 const SS_BESTAND='7f80024c-8546-8326-a1dd-018b0b3e933e'; // Kopie 12:39
 const SS_ANMELDUNGEN=''; // Kein eigenes Anmeldungen-DB
@@ -1563,9 +1563,7 @@ function notionCreatePage(dbId, props, cb){
 }
 
 function pushTaskToNotion(task){
-  // Token und DB je nach Bereich wählen
-  var token=task.biz==='a'?getNotionToken():getRalfToken();
-  if(!token){toast('ℹ️ Notion-Token fehlt – in Einstellungen eintragen');return;}
+  // Token kommt aus Netlify Env Variable – kein lokaler Token nötig
   var dbId=task.biz==='a'?SSDBID:NDBID;
   var assigneeNames=(task.assignees||[]).map(function(id){
     var p=AS.find(function(x){return x.id===id;});
@@ -1704,8 +1702,7 @@ function quickSaveToNotion(){
   var inp=document.getElementById('kumpel-inp');
   var t=(kumpelInputText||'').trim()||(inp&&inp.value)||'';t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
-  var token=getRalfToken();
-  if(!token){toast('⚠️ Kein Schlosserei-Token – in Einstellungen eintragen');return;}
+  // Token kommt aus Netlify Env Variable – kein lokaler Token nötig
   toast('⏳ Wird zu Notion gespeichert…');
   var props={'Name':{title:[{text:{content:t}}]},'Status':{select:{name:'offen'}}};
   notionAPI('pages','POST',{parent:{database_id:NDBID},properties:props},function(d){
