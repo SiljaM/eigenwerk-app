@@ -1063,11 +1063,11 @@ function rTeam(){
 function rSettings(){
   var hasPin=!!lp();
   var autoSync=localStorage.getItem(LK+':autosync')!=='off';
-  return '<div class="card"><div class="ct">Sync</div>'
-    +'<div class="tr" onclick="syncBoth(true)"><span style="font-size:20px">🔄</span><div class="tb"><div class="tn">Jetzt synchronisieren</div><div class="tm"><span class="pill pt">Notion + Sheets gleichzeitig</span></div></div><span class="tarr">›</span></div>'
-    +'<div class="tr" onclick="syncToNotion(true)"><span style="font-size:20px">📋</span><div class="tb"><div class="tn">Nur Notion</div></div><span class="tarr">›</span></div>'
-    +'<div class="tr" onclick="syncToSheets(true)"><span style="font-size:20px">📊</span><div class="tb"><div class="tn">Nur Google Sheets</div></div><span class="tarr">›</span></div>'
-    +'<div class="tr" onclick="pullFromSheets()"><span style="font-size:20px">📥</span><div class="tb"><div class="tn">Von Sheets laden</div><div class="tm"><span class="pill pt">Sheets → App</span></div></div><span class="tarr">›</span></div>'
+  return '<div class="card"><div class="ct">Notion-Sync</div>'
+    +'<div class="tr" onclick="sync3TasksToNotion()"><span style="font-size:20px">⬆️</span><div class="tb"><div class="tn">Top 3 → Notion schreiben</div><div class="tm"><span class="pill pt">Ralfs 3 Tagesaufgaben nach Notion</span></div></div><span class="tarr">›</span></div>'
+    +'<div class="tr" onclick="pullFromStahlSeele()"><span style="font-size:20px">📥</span><div class="tb"><div class="tn">Stahl & Seele laden</div><div class="tm"><span class="pill pt">Aufgaben von Notion holen</span></div></div><span class="tarr">›</span></div>'
+    +'<div class="tr" onclick="loadSSAnmeldungen()"><span style="font-size:20px">📩</span><div class="tb"><div class="tn">Neue Anmeldungen prüfen</div><div class="tm"><span class="pill pt">Stahl & Seele → App</span></div></div><span class="tarr">›</span></div>'
+    +'<div class="tr" onclick="testNotionConnection()"><span style="font-size:20px">🔌</span><div class="tb"><div class="tn">Verbindung testen</div><div class="tm"><span class="pill pt">Notion-Token prüfen</span></div></div><span class="tarr">›</span></div>'
     +'</div>'
     +'<div class="card"><div class="ct">Auto-Sync</div>'
     +'<div class="tr" onclick="var v=localStorage.getItem(\''+LK+':autosync\')!==\'off\';localStorage.setItem(\''+LK+':autosync\',v?\'off\':\'on\');render()">'
@@ -1701,7 +1701,7 @@ function render(){
     +'<div style="font-size:17px;font-weight:700;color:var(--cream);letter-spacing:.04em">'+_h+':'+_m+'</div>'
     +'<div style="font-size:10px;color:var(--mut);letter-spacing:.03em">'+_days[_n.getDay()]+', '+_n.getDate()+'. '+_months[_n.getMonth()]+'</div>'
     +'</div>';
-  var right=clockHtml+(sc==='aufgaben'?'<button class="hdr-b" id="sync-badge" onclick="syncBoth(true)" title="Sync" style="margin-left:8px">🔄</button>':'<button class="hdr-b" id="sync-badge" onclick="syncBoth(true)" title="Sync" style="opacity:.5;font-size:14px;margin-left:8px">🔄</button>');
+  var right=clockHtml+'<button class="hdr-b" id="sync-badge" onclick="sync3TasksToNotion()" title="Top 3 → Notion" style="margin-left:8px">⬆️</button>';
   var sheetHtml='';
   if(sheet==='detail')sheetHtml=rDetail();
   else if(sheet==='add'||sheet==='edit')sheetHtml=rAdd();
