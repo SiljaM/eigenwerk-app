@@ -266,10 +266,10 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 <div id="pin-scr" class="pin-scr"></div>
 <div id="app" style="display:none"></div>
 <script>
-const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='37c0024c-8546-80a0-b3f1-fe34be833a53';
-const SS_KURSE='9c7b1928-c33b-4b22-8496-ad08f1065c64';
-const SS_BESTAND='b9b6bd2b-dba1-456c-a0f7-f95a93e2813d';
-const SS_ANMELDUNGEN='bee44962-40f6-40f3-bac2-db2272b67e4e';
+const LK='ew_v2',NDBID='894b1001-1a81-471f-b931-311b48d95979',SSDBID='728469f1-0a8a-4126-9c6f-da74f60e8b29';
+const SS_KURSE='ed0d4041-50ab-4d96-bd3d-cb3d5c951385';
+const SS_BESTAND='86c1b42f-82e6-4d0e-b0d5-5c6b2be0dc17';
+const SS_ANMELDUNGEN=''; // Kein eigenes Anmeldungen-DB in aktueller Notion-Struktur
 const SS_3TASKS='833b7386-72ef-8230-aa9c-01239716585d'; // Cockpit – Heute (Ralfs Workspace)
 const COCKPIT_PAGE='3570024c-8546-8001-ac9f-cd50a951fec4';
 const SS_PRODUKTE=[
@@ -1385,6 +1385,7 @@ function sync3TasksToNotion(){
   } else {
     // Erst laden um blockIds zu holen, dann updaten
     notionAPI('blocks/'+SS_3TASKS+'/children','GET',null,function(data){
+      if(notionErrAlert(data,'Top 3 Seite'))return;
       var blocks=(data&&data.results||[]).filter(function(b){return b.type==='to_do';}).slice(0,3);
       if(blocks.length>0){
         var done2=0,total2=Math.min(top3.length,blocks.length);
@@ -1392,7 +1393,9 @@ function sync3TasksToNotion(){
           (function(jdx){
             notionAPI('blocks/'+blocks[jdx].id,'PATCH',{
               to_do:{rich_text:[{type:'text',text:{content:top3[jdx].text}}],checked:false}
-            },function(){done2++;if(done2===total2){toast('✅ 3 Aufgaben in Notion aktualisiert');load3Tasks();}},getRalfToken());
+            },function(d2){
+              if(!notionErrAlert(d2,'Top 3 Block')){done2++;if(done2===total2){toast('✅ 3 Aufgaben in Notion aktualisiert');load3Tasks();}}
+            },getRalfToken());
           })(j);
         }
       } else {
@@ -1400,7 +1403,7 @@ function sync3TasksToNotion(){
         var children=top3.map(function(t){return {object:'block',type:'to_do',to_do:{rich_text:[{type:'text',text:{content:t.text}}],checked:false}};});
         notionAPI('blocks/'+SS_3TASKS+'/children','PATCH',{children:children},function(d){
           if(d&&d.results){toast('✅ 3 Aufgaben in Notion eingetragen');load3Tasks();}
-          else{toast('⚠️ Notion Fehler: '+(d&&d.message||'Unbekannt'));}
+          else{alert('⚠️ Notion Fehler (Top 3):\n\n'+(d&&d.message||'Unbekannt'));}
         },getRalfToken());
       }
     },getRalfToken());
@@ -1410,8 +1413,7 @@ function sync3TasksToNotion(){
 function load3Tasks(){
   toast('⏳ Lade heutige Aufgaben…');
   notionAPI('blocks/'+SS_3TASKS+'/children','GET',null,function(data){
-    if(!data){toast('⚠️ Netzwerkfehler – Notion nicht erreichbar');return;}
-    if(data.code||data.object==='error'){toast('⚠️ Notion: '+(data.message||data.code||'Fehler'));return;}
+    if(notionErrAlert(data,'Ralfs Top 3 Seite'))return;
     if(!data.results){toast('⚠️ Konnte Aufgaben nicht laden');return;}
     var parsed=data.results
       .filter(function(b){return b.type==='to_do'||b.type==='bulleted_list_item'||b.type==='numbered_list_item';})
@@ -1595,7 +1597,7 @@ function notionErrAlert(data,label){
   if(data.object==='error'){
     var msg=data.message||data.code||'Unbekannter Fehler';
     if(msg.toLowerCase().includes('make sure')||msg.toLowerCase().includes('not_found')||msg.toLowerCase().includes('restricted')){
-      alert('⚠️ Notion: Kein Zugriff auf '+label+'\n\nFix in Notion:\n1. Datenbank öffnen\n2. ••• → Verbindungen\n3. Siljas Integration hinzufügen\n\nFehler: '+msg);
+      alert('⚠️ Notion: Kein Zugriff auf '+label+'\n\nFix in Notion:\n1. Datenbank öffnen\n2. Oben rechts ••• → Verbindungen\n3. "Eigenwerk APP" hinzufügen\n\nFehler: '+msg);
     } else {
       alert('⚠️ Notion Fehler ('+label+'):\n\n'+msg);
     }
@@ -1604,6 +1606,7 @@ function notionErrAlert(data,label){
   return false;
 }
 function loadSSAnmeldungen(){
+  if(!SS_ANMELDUNGEN){toast('ℹ️ Anmeldungen-Datenbank noch nicht eingerichtet');return;}
   if(!getNotionToken()){toast('⚠️ Kein Stahl & Seele Token → Einstellungen → "Notion Token — Siljas Workspace"');return;}
   toast('⏳ Lade neue Anmeldungen…');
   notionQueryDB(SS_ANMELDUNGEN, function(data){
