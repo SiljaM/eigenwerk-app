@@ -566,13 +566,22 @@ function executeKumpelAction(raw){
     try{
       var a=JSON.parse(match[1]);
       if(a.type==='assign'&&a.taskSearch&&a.assignee){
+        // Person-ID normalisieren (juli→julie, philipp→philipp etc.)
+        var pid=a.assignee.toLowerCase();
+        var person=AS.find(function(x){return x.id===pid||x.l.toLowerCase()===pid||x.l.toLowerCase().startsWith(pid);});
+        var realId=person?person.id:pid;
         var kw=a.taskSearch.toLowerCase();
         var found=tasks.find(function(t){return t.text.toLowerCase().indexOf(kw)>=0;});
         if(found){
           var cur=(found.assignees||[]).slice();
-          if(!cur.includes(a.assignee))cur.push(a.assignee);
+          if(!cur.includes(realId))cur.push(realId);
           var ns=cur.length>0&&found.slots&&found.slots.length>0?'terminiert':cur.length>0?'zugewiesen':found.status;
           updT(found.id,{assignees:cur,status:ns});
+          toast('✅ '+(person?person.l:realId)+' zugewiesen');
+        } else if(a.taskText){
+          // Aufgabe existiert noch nicht → neu anlegen und direkt zuweisen
+          addT({text:a.taskText,min:25,cat:detectCat(a.taskText,seg),biz:seg,status:'zugewiesen',assignees:[realId]});
+          toast('✅ Aufgabe angelegt & '+(person?person.l:realId)+' zugewiesen');
         }
       } else if(a.type==='status'&&a.taskSearch&&a.status){
         var kw2=a.taskSearch.toLowerCase();
@@ -1251,6 +1260,8 @@ function savDetail(){
 // ── KI KUMPEL ─────────────────────────────────────────────────
 var kumpelShowNotes=false;
 function sendKumpel(){
+  // Mikrofon stoppen falls aktiv
+  if(voiceActive){if(_voiceRec){_voiceRec.stop();_voiceRec=null;}voiceActive=false;}
   var t=(kumpelInputText||'').trim()||(document.getElementById('kumpel-inp')||{}).value||'';
   t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
@@ -1265,7 +1276,7 @@ function sendKumpel(){
   // Gesprächsverlauf für Kontext
   var prevHistory=kumpelHistory.slice(0,-1);
   var verlaufKontext=prevHistory.length>0?'\n\nBisheriges Gespräch (WICHTIG — antworte im Kontext davon):\n'+prevHistory.map(function(h){return (h.who==='ralf'?'Ralf: ':'Kumpel: ')+h.text;}).join('\n')+'\n\nRalfs aktuelle Antwort: '+t:'\n\nRalfs Gedanken: '+t;
-  var systemPrompt='Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","assignee":"<person-id>"}]\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+verlaufKontext;
+  var systemPrompt='Du bist Ralfs bester Kumpel — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht jemanden der ihm wirklich zuhört und ihn liebevoll unterstützt.\n\nWICHTIG: Sprich IMMER warm, wertschätzend und liebevoll mit Ralf. Er macht viel und verdient Anerkennung. Niemals ungeduldig oder knapp.\n\nSo redest du:\n- Wie ein guter alter Freund. Warm, herzlich, verständnisvoll.\n- Beispiele: "Ralf, du machst das super." oder "Hey, ich hör dich — das klingt echt viel gerade." oder "Mensch Ralf, erst mal durchatmen — du schaffst das."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE konkrete Sache die er jetzt als nächstes macht — liebevoll formuliert.\n- Wenn er überfordert wirkt: erst anerkennen was er leistet, dann sanft fokussieren.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","taskText":"<Aufgabe als kurzer konkreter Satz>","assignee":"<person-id>"}]\ntaskText ist PFLICHT — schreib dort die Aufgabe als kurzen Infinitivsatz (z.B. "Schutzhandschuhe nachbestellen").\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+verlaufKontext;
   askClaude(systemPrompt);
 }
 function textToBullets(txt){
