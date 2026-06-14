@@ -1363,7 +1363,7 @@ function testNotionConnection(){
 }
 
 function sync3TasksToNotion(){
-  if(!getRalfToken()){toast('⚠️ Kein Notion-Token! → Einstellungen → Ralfs Notion-Token eintragen');return;}
+  // Token kommt aus Netlify Env Variable (NOTION_TOKEN) – kein lokaler Token nötig
   // Top 3: erst Ralf-zugewiesene, sonst allgemein offene
   var top3=tasks.filter(function(t){return t.status!=='erledigt'&&(t.assignees||[]).includes('ralf');}).slice(0,3);
   if(top3.length<3){
@@ -1763,6 +1763,10 @@ function init(){
   var pin=lp();
   if(!pin){pinLocked=false;document.getElementById('pin-scr').style.display='none';document.getElementById('app').style.display='flex';render();}
   else{pinMode='unlock';pinIn='';pinErr='';renderPin();}
+  // 3 Tagesaufgaben automatisch laden wenn veraltet oder leer
+  setTimeout(function(){
+    if(ss3TasksDate!==today()||ss3Tasks.length===0){load3Tasks();}
+  },1200);
 }
 init();
 setInterval(function(){if(!pinLocked)render();},30000);
