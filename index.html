@@ -976,10 +976,13 @@ function rHeute(){
       var html='<div style="background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;border-left:4px solid var(--rust)">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
         +'<div style="font-size:13px;font-weight:700;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Deine 3 für heute</div>'
-        +'<button onclick="load3Tasks()" style="background:none;border:1px solid var(--bdr);color:var(--mut);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">'+(isToday?'🔄 Neu laden':'📥 Laden')+'</button>'
+        +'<div style="display:flex;gap:6px">'
+        +'<button onclick="sync3TasksToNotion()" style="background:var(--rust);border:none;color:white;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700">⬆️ Sync</button>'
+        +'<button onclick="load3Tasks()" style="background:none;border:1px solid var(--bdr);color:var(--mut);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">'+(isToday?'🔄':'📥')+'</button>'
+        +'</div>'
         +'</div>';
       if(!isToday||ss3Tasks.length===0){
-        html+='<div style="text-align:center;padding:12px 0;color:var(--mut);font-size:13px">Noch keine Aufgaben für heute.<br><span style="font-size:11px">Julie trägt sie in Notion ein.</span></div>';
+        html+='<div style="text-align:center;padding:12px 0;color:var(--mut);font-size:13px">Noch keine Aufgaben für heute.<br><span style="font-size:11px">Drück ⬆️ Sync um die Top 3 zu setzen.</span></div>';
       } else {
         ss3Tasks.forEach(function(t,i){
           html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--lit)'+(i===ss3Tasks.length-1?';border-bottom:none':'')+'">'
@@ -1379,6 +1382,51 @@ var teamTasksList=JSON.parse(localStorage.getItem(LK+':teamtasks')||'[]');
 // ── RALFS 3 TAGESAUFGABEN ─────────────────────────────────────
 var ss3Tasks=JSON.parse(localStorage.getItem('ew_v2:3tasks')||'[]');
 var ss3TasksDate=localStorage.getItem('ew_v2:3tasks_date')||'';
+
+function sync3TasksToNotion(){
+  if(!getRalfToken()){toast('ℹ️ Bitte Ralfs Notion-Token in Einstellungen eintragen');return;}
+  // Top 3: erst Ralf-zugewiesene, sonst allgemein offene
+  var top3=tasks.filter(function(t){return t.status!=='erledigt'&&(t.assignees||[]).includes('ralf');}).slice(0,3);
+  if(top3.length<3){
+    var rest=tasks.filter(function(t){return t.status!=='erledigt'&&!(t.assignees||[]).includes('ralf');});
+    top3=top3.concat(rest).slice(0,3);
+  }
+  if(top3.length===0){toast('ℹ️ Keine offenen Aufgaben vorhanden');return;}
+  toast('⏳ Schreibe 3 Aufgaben nach Notion…');
+  // Wenn blockIds bekannt → bestehende Blöcke updaten
+  if(ss3Tasks.length>0&&ss3Tasks[0].blockId){
+    var done=0,total=Math.min(top3.length,ss3Tasks.length);
+    for(var i=0;i<total;i++){
+      (function(idx){
+        notionAPI('blocks/'+ss3Tasks[idx].blockId,'PATCH',{
+          to_do:{rich_text:[{type:'text',text:{content:top3[idx].text}}],checked:false}
+        },function(){done++;if(done===total){toast('✅ 3 Aufgaben in Notion aktualisiert');load3Tasks();}},getRalfToken());
+      })(i);
+    }
+  } else {
+    // Erst laden um blockIds zu holen, dann updaten
+    notionAPI('blocks/'+SS_3TASKS+'/children','GET',null,function(data){
+      var blocks=(data&&data.results||[]).filter(function(b){return b.type==='to_do';}).slice(0,3);
+      if(blocks.length>0){
+        var done2=0,total2=Math.min(top3.length,blocks.length);
+        for(var j=0;j<total2;j++){
+          (function(jdx){
+            notionAPI('blocks/'+blocks[jdx].id,'PATCH',{
+              to_do:{rich_text:[{type:'text',text:{content:top3[jdx].text}}],checked:false}
+            },function(){done2++;if(done2===total2){toast('✅ 3 Aufgaben in Notion aktualisiert');load3Tasks();}},getRalfToken());
+          })(j);
+        }
+      } else {
+        // Keine Blöcke vorhanden → neu anlegen
+        var children=top3.map(function(t){return {object:'block',type:'to_do',to_do:{rich_text:[{type:'text',text:{content:t.text}}],checked:false}};});
+        notionAPI('blocks/'+SS_3TASKS+'/children','PATCH',{children:children},function(d){
+          if(d&&d.results){toast('✅ 3 Aufgaben in Notion eingetragen');load3Tasks();}
+          else{toast('⚠️ Notion Fehler: '+(d&&d.message||'Unbekannt'));}
+        },getRalfToken());
+      }
+    },getRalfToken());
+  }
+}
 
 function load3Tasks(){
   toast('⏳ Lade heutige Aufgaben…');
