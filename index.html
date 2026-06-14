@@ -715,9 +715,9 @@ function syncBoth(showToast){
 }
 
 function getApiKey(){return localStorage.getItem(LK+':apikey')||'';}
-var SILJA_TOKEN_DEFAULT='ntn_'+'463412873237HHQW0yGESb4qxfVftm9pZBzDS59qLB7e1I';
+var SILJA_TOKEN_DEFAULT='';
 function getNotionToken(){return localStorage.getItem(LK+':notiontoken')||SILJA_TOKEN_DEFAULT;}
-var RALF_TOKEN_DEFAULT='ntn_'+'491828313437HbF6hLrygeautAlMwDjplrKrBYUzgMOftR';
+var RALF_TOKEN_DEFAULT='';
 function getRalfToken(){return localStorage.getItem(LK+':ralftoken')||RALF_TOKEN_DEFAULT;}
 
 // Welcher Token für welche DB?
@@ -1314,7 +1314,7 @@ function rKumpel(){
       var isRalf=h.who==='ralf';
       html+='<div style="display:flex;justify-content:'+(isRalf?'flex-end':'flex-start')+'">'
         +'<div style="max-width:85%;padding:10px 14px;border-radius:'+(isRalf?'16px 16px 4px 16px':'16px 16px 16px 4px')+';background:'+(isRalf?'var(--rust)':'#E5DDD4')+';color:'+(isRalf?'white':'#2A2218')+';font-size:14px;line-height:1.5">'
-        +h.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')
+        +h.text.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')
         +'</div></div>';
     });
     if(kumpelAiReply==='__loading__'){
