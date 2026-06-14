@@ -823,17 +823,7 @@ function rHeute(){
   });
   var pct=Math.round(c.erledigt/tasks.length*100)||0;
   var now=new Date();
-  // Setup-Banner wenn kein API-Key
-  var setupBanner=!getApiKey()?
-    '<div style="background:linear-gradient(135deg,#3D1810,#5A2A18);border:1.5px solid var(--rust);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">'
-    +'<div style="font-size:28px;flex-shrink:0">🔑</div>'
-    +'<div style="flex:1">'
-    +'<div style="font-size:14px;font-weight:700;color:#F5E8D8;margin-bottom:3px">API-Key fehlt</div>'
-    +'<div style="font-size:12px;color:#A87A5A">Notion-Sync & KI-Kumpel funktionieren erst nach Eingabe.</div>'
-    +'</div>'
-    +'<button onclick="sc=\'settings\';render()" style="padding:9px 14px;border-radius:10px;background:var(--rust);color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">Einrichten →</button>'
-    +'</div>'
-    :'';
+  var setupBanner='';
   var gr=now.getHours()<12?'Morgen':now.getHours()<18?'Tag':'Abend';
   var urg=tasks.filter(function(t){return t.cat==='Rechnungen & Angebote'&&t.status!=='erledigt';}).slice(0,3);
   var wl=weekWorkload();
@@ -1471,8 +1461,8 @@ function quickSaveToApp(){
 
 function quickSaveToNotion(){
   var inp=document.getElementById('kumpel-inp');
-  if(!inp||!inp.value.trim()){toast('⚠️ Zuerst etwas eintippen');return;}
-  if(!getApiKey()){toast('⚠️ API-Key in Einstellungen eingeben');return;}
+  var t=(kumpelInputText||'').trim()||(inp&&inp.value)||'';t=t.trim();
+  if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
   var text=inp.value.trim();
   toast('⏳ Wird zu Notion gespeichert…');
   fetch('https://api.anthropic.com/v1/messages',{
