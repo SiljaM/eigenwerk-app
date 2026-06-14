@@ -1255,13 +1255,17 @@ function sendKumpel(){
   t=t.trim();
   if(!t){toast('⚠️ Zuerst etwas eintippen');return;}
   kumpelHistory.push({who:'ralf',text:t});
+  kumpelInputText='';kumpelAiReply='__loading__';render();
   // Aktuelle Aufgaben + Team als Kontext aufbauen
   var offeneAufgaben=tasks.filter(function(t){return t.status!=='erledigt';}).slice(0,20);
   var aufgabenListe=offeneAufgaben.length>0
     ?offeneAufgaben.map(function(task,i){return (i+1)+'. "'+task.text+'" (Status: '+task.status+(task.assignees&&task.assignees.length>0?', zugewiesen: '+task.assignees.join(','):'')+')';}).join('\n')
     :'(keine offenen Aufgaben)';
   var teamListe=AS.filter(function(a){return a.id!=='ralf';}).map(function(a){return a.id+' ('+a.l+')';}).join(', ');
-  var systemPrompt='Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","assignee":"<person-id>"}]\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+'\n\nRalfs Gedanken: '+t;
+  // Gesprächsverlauf für Kontext
+  var prevHistory=kumpelHistory.slice(0,-1);
+  var verlaufKontext=prevHistory.length>0?'\n\nBisheriges Gespräch (WICHTIG — antworte im Kontext davon):\n'+prevHistory.map(function(h){return (h.who==='ralf'?'Ralf: ':'Kumpel: ')+h.text;}).join('\n')+'\n\nRalfs aktuelle Antwort: '+t:'\n\nRalfs Gedanken: '+t;
+  var systemPrompt='Du bist ein guter Kumpel von Ralf — kein Coach, kein Assistent, kein KI-Bot. Ralf ist Schlossermeister und Unternehmer (Eigenwerk Schlosserei + Eigenwerk Akademie), hat ADHS und braucht manchmal jemanden der ihm hilft, den Kopf frei zu kriegen.\n\nSo redest du:\n- Wie ein Mensch. Kumpelton. Locker, direkt, herzlich. Kein Coaching-Sprech.\n- Beispiele wie du anfangen kannst: "Ralf, kurz durchatmen." oder "Ok, ich hör dich." oder "Alter, das ist zu viel auf einmal."\n- Max. 3 Sätze. Nicht mehr.\n- Sag ihm AM ENDE genau EINE Sache die er jetzt als nächstes macht.\n- Wenn er im Kreis dreht oder zu viel plant: sanft aber klar stoppen.\n\nWICHTIG — Aufgaben-Erkennung:\nWenn Ralf etwas erwähnt, das wie eine Aufgabe klingt (etwas fehlt, etwas muss erledigt werden, jemand soll etwas tun), dann frag nach — kurz und konkret. Frag nur was du wirklich nicht weißt. Typische Rückfragen:\n- "Was genau fehlt / was soll gemacht werden?"\n- "Wieviel / wie dringend?"\n- "Soll ich das direkt als Aufgabe anlegen — und wenn ja, wer kriegt das?"\nWenn Ralf selbst sagt wer zuständig ist und was zu tun ist, dann füge am Ende deiner Antwort genau diesen Block an (kein Text davor/danach in dieser Zeile):\n[ACTION:{"type":"assign","taskSearch":"<Stichwort aus der Aufgabe>","assignee":"<person-id>"}]\nVerfügbare Personen-IDs: '+teamListe+'\n\nRalfs aktuelle Aufgaben:\n'+aufgabenListe+verlaufKontext;
   askClaude(systemPrompt);
 }
 function textToBullets(txt){
@@ -1295,7 +1299,7 @@ function rKumpel(){
 
   if(kumpelSaveProposal){
     // Save-Proposal Ansicht: Kumpel zeigt Zusammenfassung zur Bestätigung
-    html+='<div class="kumpel-ai-response" style="border-color:#22C55E">'
+    html+='<div class="kumpel-ai-response" style="border-color:#22C55E;margin-top:12px">'
       +'<div class="kumpel-ai-label" style="color:#22C55E">📋 Das würde ich speichern:</div>'
       +'<div class="kumpel-ai-text">'+kumpelSaveProposal.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'
       +'<div style="display:flex;gap:8px;margin-top:10px">'
@@ -1303,16 +1307,28 @@ function rKumpel(){
       +'<button onclick="confirmKumpelSave()" style="flex:1;padding:8px;border-radius:8px;background:#22C55E;color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">✅ Ja, speichern</button>'
       +'</div>'
       +'</div>';
-  } else if(kumpelAiReply==='__loading__'){
-    html+='<div class="kumpel-thinking"><div class="kumpel-dot"></div><div class="kumpel-dot"></div><div class="kumpel-dot"></div><span>Kumpel denkt…</span></div>';
-  } else if(kumpelAiReply){
-    html+='<div class="kumpel-ai-response">'
-      +'<div class="kumpel-ai-text">'+kumpelAiReply.replace(/\n/g,'<br>')+'</div>'
-      +'<div style="display:flex;gap:8px;margin-top:10px">'
-      +'<button onclick="kumpelAiReply=\'\';kumpelInputText=\'\';render()" style="flex:1;padding:8px;border-radius:8px;background:#E5DDD4;color:#2A2218;border:none;font-size:12px;cursor:pointer">✕ Schließen</button>'
-      +'<button onclick="proposeKumpelSave()" style="flex:1;padding:8px;border-radius:8px;background:var(--rust);color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">📌 Speichern</button>'
-      +'</div>'
-      +'</div>';
+  } else if(kumpelHistory.length>0||kumpelAiReply==='__loading__'){
+    // Chat-Thread anzeigen
+    html+='<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">';
+    kumpelHistory.forEach(function(h){
+      var isRalf=h.who==='ralf';
+      html+='<div style="display:flex;justify-content:'+(isRalf?'flex-end':'flex-start')+'">'
+        +'<div style="max-width:85%;padding:10px 14px;border-radius:'+(isRalf?'16px 16px 4px 16px':'16px 16px 16px 4px')+';background:'+(isRalf?'var(--rust)':'#E5DDD4')+';color:'+(isRalf?'white':'#2A2218')+';font-size:14px;line-height:1.5">'
+        +h.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')
+        +'</div></div>';
+    });
+    if(kumpelAiReply==='__loading__'){
+      html+='<div style="display:flex;justify-content:flex-start">'
+        +'<div style="padding:10px 14px;border-radius:16px 16px 16px 4px;background:#E5DDD4;display:flex;gap:4px;align-items:center"><div class="kumpel-dot"></div><div class="kumpel-dot"></div><div class="kumpel-dot"></div></div>'
+        +'</div>';
+    }
+    html+='</div>';
+    if(kumpelHistory.length>0&&kumpelAiReply!=='__loading__'){
+      html+='<div style="display:flex;gap:8px;margin-top:10px">'
+        +'<button onclick="kumpelAiReply=\'\';kumpelHistory=[];kumpelInputText=\'\';render()" style="flex:1;padding:8px;border-radius:8px;background:#E5DDD4;color:#2A2218;border:none;font-size:12px;cursor:pointer">✕ Gespräch beenden</button>'
+        +'<button onclick="proposeKumpelSave()" style="flex:1;padding:8px;border-radius:8px;background:var(--rust);color:white;border:none;font-size:12px;font-weight:700;cursor:pointer">📌 Speichern</button>'
+        +'</div>';
+    }
   }
 
   // Notizen-Bereich (ein-/ausklappbar)
